@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat REST & Notas API — Web Dashboard</title>
+    <style>
+        :root {
+            --bg-main: #1a1a2e;
+            --bg-panel: #16213e;
+            --bg-input: #0d1117;
+            --bg-entry: #21262d;
+            --cyan: #00d4ff;
+            --green: #00ff88;
+            --purple: #d2a8ff;
+            --text: #c9d1d9;
+            --gray: #555577;
+            --dark-gray: #444466;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Consolas', monospace;
+        }
+
+        body {
+            background-color: var(--bg-main);
+            color: var(--text);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Top Bar */
+        header {
+            background-color: var(--bg-panel);
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #0f172a;
+        }
+
+        header h1 {
+            font-size: 16px;
+            color: var(--cyan);
+            font-weight: bold;
+        }
+
+        #user-badge {
+            color: var(--green);
+            font-size: 14px;
+        }
+
+        /* Main Dashboard Layout */
+        main {
+            display: flex;
+            flex: 1;
+            padding: 10px;
+            gap: 10px;
+            overflow: hidden;
+        }
+
+        /* Left Side: Chat Workspace */
+        .chat-container {
+            flex: 2;
+            display: flex;
+            flex-direction: column;
+            background-color: var(--bg-main);
+        }
+
+        .section-label {
+            font-size: 12px;
+            color: var(--gray);
+            margin-bottom: 4px;
+        }
+
+        #chat-box {
+            flex: 1;
+            background-color: var(--bg-input);
+            border-radius: 4px;
+            padding: 15px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            font-size: 14px;
+        }
+
+        /* Chat Message Tags */
+        .msg { line-height: 1.4; }
+        .msg .time { color: var(--dark-gray); margin-right: 6px; }
+        .msg.sistema { color: var(--gray); font-style: italic; }
+        .msg.notas { color: var(--purple); }
+        .msg.propio .sender { color: #79c0ff; }
+        .msg.otro .sender { color: var(--green); }
+
+        /* Input Controls */
+        .input-area {
+            display: flex;
+            background-color: var(--bg-entry);
+            margin-top: 8px;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        #message-input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            padding: 12px;
+            color: white;
+            font-size: 14px;
+            outline: none;
+        }
+
+        #btn-send {
+            background-color: #238636;
+            color: white;
+            border: none;
+            padding: 0 24px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        #btn-send:hover { background-color: #2ea043; }
+
+        /* Right Side: Sidebar Panel */
+        sidebar {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-width: 350px;
+            min-width: 250px;
+        }
+
+        .panel {
+            background-color: var(--bg-panel);
+            border-radius: 4px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .users-panel { flex: 1; }
+        #users-list {
+            flex: 1;
+            background-color: var(--bg-input);
+            border-radius: 4px;
+            padding: 8px;
+            list-style: none;
+            overflow-y: auto;
+            color: var(--green);
+            font-size: 13px;
+        }
+        #users-list li { padding: 4px 0; }
+
+        /* Notes Management Panel */
+        .notes-panel { flex: 2; overflow: hidden; }
+        .note-form {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 10px;
+        }
+        .note-form input, .note-form textarea {
+            background-color: var(--bg-input);
+            border: 1px solid #30363d;
+            border-radius: 4px;
+            padding: 6px;
+            color: white;
+            font-size: 12px;
+            outline: none;
+        }
+        .note-form button {
+            background-color: #21262d;
+            color: var(--purple);
+            border: 1px solid #30363d;
+            padding: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        .note-form button:hover { background-color: #30363d; }
+
+        #notes-list {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .note-card {
+            background-color: var(--bg-input);
+            padding: 8px;
+            border-radius: 4px;
+            border-left: 3px solid var(--purple);
+            position: relative;
+        }
+        .note-card h4 { color: var(--purple); font-size: 13px; margin-bottom: 2px; }
+        .note-card p { font-size: 12px; color: #8b949e; }
+        .note-card .btn-del {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            background: transparent;
+            border: none;
+            color: #f85149;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 11px;
+        }
+
+        /* Console Footer Log */
+        footer {
+            background-color: var(--bg-main);
+            padding: 0 10px 10px 10px;
+        }
+        #console-log {
+            height: 80px;
+            background-color: var(--bg-input);
+            border-radius: 4px;
+            padding: 8px;
+            overflow-y: auto;
+            font-size: 11px;
+            color: #6e7681;
+            white-space: pre-wrap;
+        }
+
+        /* Modal Auth Overlap */
+        #login-modal {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(13, 17, 23, 0.95);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+        .modal-box {
+            background-color: var(--bg-panel);
+            padding: 30px;
+            border-radius: 6px;
+            text-align: center;
+            border: 1px solid #30363d;
+            box-shadow: 0 0 20px rgba(0,212,255,0.2);
+        }
+        .modal-box h2 { color: var(--cyan); margin-bottom: 15px; font-size: 18px; }
+        .modal-box input {
+            background-color: var(--bg-input);
+            border: 1px solid #30363d;
+            padding: 10px;
+            color: white;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            width: 250px;
+            text-align: center;
+            font-size: 14px;
+        }
+        .modal-box button {
+            background-color: #238636;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="login-modal">
+        <div class="modal-box">
+            <h2>💬 Ingresa tu nombre de usuario:</h2>
+            <input type="text" id="username-input" placeholder="Ej. Ricardo" autocomplete="off">
+            <br>
+            <button onclick="inicializarCliente()">Entrar al Sistema</button>
+        </div>
+    </div>
+
+    <header>
+        <h1>💬 CHAT REST & NOTAS API (Sistemas Distribuidos)</h1>
+        <div id="user-badge">● Desconectado</div>
+    </header>
+
+    <main>
+        <div class="chat-container">
+            <div class="section-label">MENSAJES (Soporta comandos de /nota)</div>
+            <div id="chat-box"></div>
+            <div class="input-area">
+                <input type="text" id="message-input" placeholder="Escribe un mensaje o /nota add Título | Contenido..." autocomplete="off">
+                <button id="btn-send" onclick="procesarEntradaInput()">Enviar</button>
+            </div>
+        </div>
+
+        <sidebar>
+            <div class="panel users-panel">
+                <div class="section-label" style="color: var(--cyan); font-weight: bold;">CONECTADOS</div>
+                <ul id="users-list"></ul>
+            </div>
+
+            <div class="panel notes-panel">
+                <div class="section-label" style="color: var(--purple); font-weight: bold;">📝 MICROSERVICIO NOTAS (FastAPI)</div>
+                <div class="note-form">
+                    <input type="text" id="note-title" placeholder="Título de la nota">
+                    <textarea id="note-text" placeholder="Contenido..." rows="2"></textarea>
+                    <button onclick="uiAgregarNota()">Crear Nota</button>
+                </div>
+                <div id="notes-list"></div>
+            </div>
+        </sidebar>
+    </main>
+
+    <footer>
+        <div class="section-label">PETICIONES HTTP CONSOLE LOG</div>
+        <div id="console-log"></div>
+    </footer>
+
+    <script>
+        // ── Configuración Estricta de Endpoints de Cloud Run ──
+        const URL_CHAT = "https://servidor-chat-1086997289741.northamerica-northeast2.run.app";
+        const URL_NOTAS = "https://api-notas-1086997289741.northamerica-northeast2.run.app";
+
+        let usuario = "";
+        let ultimoId = 0;
+
+        // Escucha la tecla Enter en los inputs
+        document.getElementById('username-input').addEventListener('keypress', e => { if(e.key === 'Enter') inicializarCliente(); });
+        document.getElementById('message-input').addEventListener('keypress', e => { if(e.key === 'Enter') procesarEntradaInput(); });
+
+        function logHttp(texto) {
+            const consoleBox = document.getElementById('console-log');
+            const time = new Date().toLocaleTimeString();
+            consoleBox.innerHTML += `[${time}] ${texto}\n`;
+            consoleBox.scrollTop = consoleBox.scrollHeight;
+        }
+
+        async function inicializarCliente() {
+            const input = document.getElementById('username-input');
+            usuario = input.value.trim();
+            if(!usuario) return alert("Por favor ingresa un nombre válido");
+
+            logHttp(`Intentando POST Chat /unirse para usuario: ${usuario}`);
+            try {
+                const res = await fetch(`${URL_CHAT}/unirse`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ usuario: usuario })
+                });
+                
+                if(res.ok) {
+                    document.getElementById('login-modal').style.display = 'none';
+                    document.getElementById('user-badge').innerText = `● ${usuario}`;
+                    document.getElementById('message-input').focus();
+                    
+                    // Inicializar Loops de Comunicación Distribuida
+                    setInterval(hiloPolling, 1000);
+                    setInterval(hiloHeartbeat, 5000);
+                    
+                    // Carga Inicial de datos
+                    uiListarNotas();
+                    imprimirLocal("SISTEMA", `*** Bienvenido al sistema distribuido, ${usuario} ***`);
+                } else {
+                    alert("El servidor rechazó la solicitud de acceso.");
+                }
+            } catch (err) {
+                console.error(err);
+                alert(`Error crítico de conexión con ${URL_CHAT}.\n¿Olvidaste activar CORS en Flask?`);
+            }
+        }
+
+        // ── Lógica de Comunicación con Microservicio de Chat (Flask) ──
+        async function hiloPolling() {
+            try {
+                // 1. Mensajes Nuevos
+                const resMsg = await fetch(`${URL_CHAT}/mensajes?desde=${ultimoId}`);
+                if(resMsg.ok) {
+                    const data = await resMsg.json();
+                    const nuevos = data.mensajes || [];
+                    if(nuevos.length > 0) {
+                        nuevos.forEach(msg => mostrarMensajeUI(msg));
+                        logHttp(`GET Chat /mensajes?desde=${ultimoId} → ${nuevos.length} nuevo(s)`);
+                        ultimoId = nuevos[nuevos.length - 1].id;
+                    }
+                }
+
+                // 2. Usuarios Conectados (Cada 3 segundos para balancear la carga)
+                if(Math.floor(Date.now() / 1000) % 3 === 0) {
+                    const resUsr = await fetch(`${URL_CHAT}/usuarios`);
+                    if(resUsr.ok) {
+                        const dataUsr = await resUsr.json();
+                        actualizarUsuariosUI(dataUsr.usuarios || []);
+                    }
+                }
+            } catch (err) {
+                console.error("Error en Polling:", err);
+            }
+        }
+
+        async function hiloHeartbeat() {
+            try {
+                await fetch(`${URL_CHAT}/heartbeat`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ usuario: usuario })
+                });
+            } catch(e){}
+        }
+
+        async function enviarMensajeChat(texto) {
+            try {
+                const res = await fetch(`${URL_CHAT}/mensajes`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ usuario: usuario, texto: texto })
+                });
+                logHttp(`POST Chat /mensajes → ${res.ok ? '200 OK' : 'ERROR'}`);
+            } catch (err) {
+                logHttp(`POST Chat /mensajes → FALLO DE RED`);
+            }
+        }
+
+        // ── Lógica de Comunicación con Microservicio de Notas (FastAPI) ──
+        async function uiAgregarNota() {
+            const titleInput = document.getElementById('note-title');
+            const textInput = document.getElementById('note-text');
+            const t = titleInput.value.trim();
+            const n = textInput.value.trim();
+            
+            if(!t || !n) return alert("Completa título y contenido");
+
+            try {
+                const res = await fetch(`${URL_NOTAS}/${usuario}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title: t, note: n })
+                });
+                logHttp(`POST Notas /${usuario} → ${res.status}`);
+                if(res.status === 201) {
+                    titleInput.value = "";
+                    textInput.value = "";
+                    imprimirLocal("API_NOTAS", `Nota creada exitosamente: '${t}'`);
+                    uiListarNotas();
+                }
+            } catch(e) {
+                imprimirLocal("API_NOTAS", "Fallo de conexión al guardar nota.");
+            }
+        }
+
+        async function uiListarNotas() {
+            try {
+                const res = await fetch(`${URL_NOTAS}/${usuario}`);
+                logHttp(`GET Notas /${usuario} → ${res.status}`);
+                if(res.status === 200) {
+                    const notas = await res.json();
+                    const container = document.getElementById('notes-list');
+                    container.innerHTML = "";
+                    notas.forEach(n => {
+                        container.innerHTML += `
+                            <div class="note-card">
+                                <h4>${n.title}</h4>
+                                <p>${n.note}</p>
+                                <button class="btn-del" onclick="uiEliminarNota(${n.id})">X</button>
+                            </div>
+                        `;
+                    });
+                }
+            } catch(e){}
+        }
+
+        async function uiEliminarNota(id) {
+            try {
+                const res = await fetch(`${URL_NOTAS}/${usuario}/${id}`, { method: 'DELETE' });
+                logHttp(`DELETE Notas /${usuario}/${id} → ${res.status}`);
+                if(res.status === 204) {
+                    imprimirLocal("API_NOTAS", `Nota con ID ${id} purgada del sistema.`);
+                    uiListarNotas();
+                }
+            } catch(e){}
+        }
+
+        // ── Procesamiento de Comandos Avanzados de Consola ──
+        function procesarEntradaInput() {
+            const input = document.getElementById('message-input');
+            const texto = input.value.trim();
+            if(!texto) return;
+            input.value = "";
+
+            if(texto.startsWith('/nota')) {
+                manejarComandoConsolaNotas(texto);
+            } else {
+                enviarMensajeChat(texto);
+            }
+        }
+
+        function manejarComandoConsolaNotas(texto) {
+            const partes = texto.split(' ');
+            const comando = partes[1] || '';
+
+            if(comando === 'add') {
+                const resto = texto.substring(10).split('|');
+                const t = resto[0] ? resto[0].trim() : '';
+                const n = resto[1] ? resto[1].trim() : 'Sin descripción';
+                if(!t) return imprimirLocal("API_NOTAS", "Sintaxis errónea. Usa: /nota add Título | Contenido");
+                
+                fetch(`${URL_NOTAS}/${usuario}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title: t, note: n })
+                }).then(res => {
+                    logHttp(`POST Notas /${usuario} → ${res.status}`);
+                    if(res.status === 201) {
+                        imprimirLocal("API_NOTAS", `Nota creada exitosamente: '${t}'`);
+                        uiListarNotas();
+                    }
+                });
+            } else if(comando === 'list') {
+                uiListarNotas();
+            } else if(comando === 'del') {
+                const id = parseInt(partes[2]);
+                if(isNaN(id)) return imprimirLocal("API_NOTAS", "El ID debe ser un número entero.");
+                uiEliminarNota(id);
+            } else {
+                imprimirLocal("API_NOTAS", "Comando inválido. Usa: /nota [add t|n] , [/nota list] o [/nota del ID]");
+            }
+        }
+
+        // ── Renderizadores UI Flujo de Datos ──
+        function mostrarMensajeUI(msg) {
+            const box = document.getElementById('chat-box');
+            const hora = msg.timestamp || new Date().toLocaleTimeString();
+            const usr = msg.usuario;
+            const txt = msg.texto;
+            
+            let claseType = "otro";
+            if(usr === "SISTEMA") claseType = "sistema";
+            else if(usr === "API_NOTAS") claseType = "notas";
+            else if(usr === usuario) claseType = "propio";
+
+            let item = "";
+            if(usr === "SISTEMA") {
+                item = `<div class="msg sistema">  ${txt}</div>`;
+            } else if(usr === "API_NOTAS") {
+                item = `<div class="msg notas"><span class="time">[${hora}]</span> 📝 [NOTAS]: ${txt}</div>`;
+            } else {
+                const displaySender = usr === usuario ? "Tú" : usr;
+                item = `<div class="msg ${claseType}"><span class="time">[${hora}]</span><span class="sender">${displaySender}:</span> ${txt}</div>`;
+            }
+
+            box.innerHTML += item;
+            box.scrollTop = box.scrollHeight;
+        }
+
+        function actualizarUsuariosUI(lista) {
+            const ul = document.getElementById('users-list');
+            ul.innerHTML = "";
+            lista.forEach(u => {
+                const prefijo = u === usuario ? "► " : "  ";
+                ul.innerHTML += `<li>${prefijo}${u}</li>`;
+            });
+        }
+
+        function imprimirLocal(origen, texto) {
+            mostrarMensajeUI({
+                usuario: origen,
+                texto: texto,
+                timestamp: new Date().toLocaleTimeString()
+            });
+        }
+
+        // Manejar el cierre de la ventana del navegador para avisar la desconexión
+        window.addEventListener('beforeunload', () => {
+            navigator.sendBeacon(`${URL_CHAT}/salir`, JSON.stringify({ usuario: usuario }));
+        });
+    </script>
+</body>
+</html>

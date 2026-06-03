@@ -1,0 +1,55 @@
+version: '3.8'
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Pérez Hernández Ricardo — Práctica 8: Contenedores y Microservicios
+# ─────────────────────────────────────────────────────────────────────────────
+# Arquitectura:
+#   notes-api   → FastAPI  (puerto 8000)  — CRUD de notas en memoria
+#   chat-server → Flask    (puerto 9000)  — Servidor de chat REST
+#
+# El cliente Tkinter (chat_cliente.py) corre LOCAL y se conecta a
+# localhost:8000 y localhost:9000 a través de los puertos expuestos.
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── Microservicio 1: API de Notas (FastAPI) ──────────────────────────────
+  notes-api:
+    build:
+      context: ./notes-api
+      dockerfile: Dockerfile
+    container_name: p8-notes-api
+    ports:
+      - "8000:8000"
+    networks:
+      - p8-network
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8000/docs"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ── Microservicio 2: Servidor de Chat (Flask) ────────────────────────────
+  chat-server:
+    build:
+      context: ./chat-server
+      dockerfile: Dockerfile
+    container_name: p8-chat-server
+    ports:
+      - "9000:9000"
+    networks:
+      - p8-network
+    depends_on:
+      notes-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+networks:
+  p8-network:
+    driver: bridge
